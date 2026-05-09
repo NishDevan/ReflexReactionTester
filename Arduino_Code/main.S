@@ -1,4 +1,3 @@
-#line 1 "C:\\Users\\satri\\OneDrive\\文档\\Arduino\\FINPRO8\\main.S"
 #define __SFR_OFFSET 0x00
 #include "avr/io.h"
 
@@ -6,7 +5,6 @@
 .equ FL_P1WIN,    1
 .equ FL_P2WIN,    2
 .equ FL_FALSE,    3
-.equ FL_BUZACT,   4
 
 .equ EE_HS_L,     0x00
 .equ EE_HS_H,     0x01
@@ -14,7 +12,7 @@
 .equ EE_HS2_H,    0x03
 
 .equ I2C_FREQ_DIV, 32
-.equ LCD_ADDR,    0x27
+.equ LCD_ADDR,    0x20 
 .equ LCD_BL,      0x08
 .equ LCD_EN,      0x04
 .equ LCD_RW,      0x02
@@ -32,14 +30,14 @@ main:
 
     LDI   R16, 0b11110011
     OUT   DDRD, R16
-    LDI   R16, 0b11110000
+    LDI   R16, 0x00
     OUT   PORTD, R16
 
     IN    R16, PORTD
     ORI   R16, (1<<PD2)|(1<<PD3)
     OUT   PORTD, R16
 
-    LDI   R16, (1<<PB0)|(1<<PB1)
+    LDI   R16, (1<<PB0)
     OUT   DDRB, R16
     LDI   R16, 0x00
     OUT   PORTB, R16
@@ -61,11 +59,6 @@ main:
     LDI   R16, 0
     STS   TCCR1A, R16
     STS   TCCR1B, R16
-
-    LDI   R16, 61
-    STS   OCR2A, R16
-    LDI   R16, (1<<WGM21)
-    STS   TCCR2A, R16
 
     LDI   R16, I2C_FREQ_DIV
     STS   TWBR, R16
@@ -127,124 +120,108 @@ gl_chk_done:
 
     RCALL show_round_status
     RCALL delay_1s
+
+    IN    R16, PORTD
+    ORI   R16, 0b11110000
+    OUT   PORTD, R16
+    SBI   PORTB, PB0
+
+    RCALL delay_1s
+
     RCALL leds_off
+    RCALL delay_1s
+
     CLR   R19
 
-    RCALL beep_short
+    RCALL delay_100ms
     SBI   PORTD, PD4
-    RCALL random_delay_800ms
-    IN    R16, PIND
-    ANDI  R16, (1<<PD2)|(1<<PD3)
-    CPI   R16, (1<<PD2)|(1<<PD3)
-    BREQ  fs_ok1
+    RCALL delay_1s_poll
+    CPI   R22, 0
+    BREQ  nofs_1
     RJMP  false_start_detected
-fs_ok1:
+nofs_1:
 
-    RCALL beep_short
+    RCALL delay_100ms
     SBI   PORTD, PD5
-    RCALL random_delay_800ms
-    IN    R16, PIND
-    ANDI  R16, (1<<PD2)|(1<<PD3)
-    CPI   R16, (1<<PD2)|(1<<PD3)
-    BREQ  fs_ok2
+    RCALL delay_1s_poll
+    CPI   R22, 0
+    BREQ  nofs_2
     RJMP  false_start_detected
-fs_ok2:
+nofs_2:
 
-    RCALL beep_short
+    RCALL delay_100ms
     SBI   PORTD, PD6
-    RCALL random_delay_800ms
-    IN    R16, PIND
-    ANDI  R16, (1<<PD2)|(1<<PD3)
-    CPI   R16, (1<<PD2)|(1<<PD3)
-    BREQ  fs_ok3
+    RCALL delay_1s_poll
+    CPI   R22, 0
+    BREQ  nofs_3
     RJMP  false_start_detected
-fs_ok3:
+nofs_3:
 
-    RCALL beep_short
+    RCALL delay_100ms
     SBI   PORTD, PD7
-    RCALL random_delay_800ms
-    IN    R16, PIND
-    ANDI  R16, (1<<PD2)|(1<<PD3)
-    CPI   R16, (1<<PD2)|(1<<PD3)
-    BREQ  fs_ok4
+    RCALL delay_1s_poll
+    CPI   R22, 0
+    BREQ  nofs_4
     RJMP  false_start_detected
-fs_ok4:
+nofs_4:
 
-    RCALL beep_short
+    RCALL delay_100ms
     SBI   PORTB, PB0
-    RCALL random_delay_800ms
-    IN    R16, PIND
-    ANDI  R16, (1<<PD2)|(1<<PD3)
-    CPI   R16, (1<<PD2)|(1<<PD3)
-    BREQ  fs_ok5
+    RCALL delay_1s_poll
+    CPI   R22, 0
+    BREQ  nofs_5
     RJMP  false_start_detected
-fs_ok5:
+nofs_5:
 
-    RCALL random_delay_3s
-
-    IN    R16, PIND
-    ANDI  R16, (1<<PD2)|(1<<PD3)
-    CPI   R16, (1<<PD2)|(1<<PD3)
-    BREQ  fs_ok6
+    RCALL random_delay_poll
+    CPI   R22, 0
+    BREQ  nofs_6
     RJMP  false_start_detected
+nofs_6:
+
+    RJMP  fs_ok6                 
+
 fs_ok6:
-
     RCALL leds_off
-    RCALL beep_double
+    RCALL show_go_ui
 
-    LDI   R16, 0x80
-    RCALL lcd_cmd
-    LDI   ZL, lo8(str_go)
-    LDI   ZH, hi8(str_go)
-    RCALL lcd_print_pgm
-
-    LDI   R16, 0xC0
-    RCALL lcd_cmd
-    LDI   ZL, lo8(str_press)
-    LDI   ZH, hi8(str_press)
-    RCALL lcd_print_pgm
-
-    LDI   ZL, lo8(str_ser_go)
-    LDI   ZH, hi8(str_ser_go)
-    RCALL uart_print_pgm
+    LDI   R16, 0
+    STS   TCNT1H, R16
+    STS   TCNT1L, R16
+    LDI   R16, (1<<CS12)|(1<<CS10)
+    STS   TCCR1B, R16
 
     SBR   R19, (1<<FL_GO)
     CLR   R28
     CLR   R29
 
-    LDI   R16, 0
-    STS   TCNT1H, R16
-    STS   TCNT1L, R16
-    LDI   R16, (1<<CS11)|(1<<CS10)
-    STS   TCCR1B, R16
-
 wait_button:
-    IN    R16, SREG
-    STS   TCNT1H, R17
-    LDS   R17, TCNT1H
-    LDS   R28, TCNT1L
-    MOV   R29, R17
-
-    CPI   R29, 0x5B
-    BRLO  check_buttons
-    CPI   R29, 0x5B
-    BREQ  check_timer_hi
-    RJMP  timeout_nopress
-check_timer_hi:
-    CPI   R28, 0x8D
-    BRSH  timeout_nopress
-
-check_buttons:
-    IN    R16, PIND
     SBIS  PIND, PD2
     RJMP  p1_pressed
     SBIS  PIND, PD3
     RJMP  p2_pressed
-    RJMP  wait_button
+
+    LDS   R28, TCNT1L
+    LDS   R29, TCNT1H
+
+    CPI   R29, 0xB7
+    BRLO  wait_button
+    CPI   R29, 0xB7
+    BREQ  check_timer_hi
+    RJMP  timeout_nopress
+
+check_timer_hi:
+    CPI   R28, 0x1B
+    BRLO  wait_button
+    RJMP  timeout_nopress
 
 p1_pressed:
     LDI   R16, 0
     STS   TCCR1B, R16
+    
+    LDS   R28, TCNT1L
+    LDS   R29, TCNT1H
+
     CBR   R19, (1<<FL_GO)
     SBR   R19, (1<<FL_P1WIN)
     INC   R24
@@ -254,6 +231,10 @@ p1_pressed:
 p2_pressed:
     LDI   R16, 0
     STS   TCCR1B, R16
+
+    LDS   R28, TCNT1L
+    LDS   R29, TCNT1H
+
     CBR   R19, (1<<FL_GO)
     SBR   R19, (1<<FL_P2WIN)
     INC   R25
@@ -263,6 +244,7 @@ p2_pressed:
 timeout_nopress:
     LDI   R16, 0
     STS   TCCR1B, R16
+
     LDI   R16, 0x80
     RCALL lcd_cmd
     LDI   ZL, lo8(str_timeout)
@@ -274,16 +256,34 @@ timeout_nopress:
     RCALL delay_2s
     RJMP  round_done
 
+show_go_ui:
+    LDI   R16, 0x80
+    RCALL lcd_cmd
+    LDI   ZL, lo8(str_go)
+    LDI   ZH, hi8(str_go)
+    RCALL lcd_print_pgm
+    LDI   R16, 0xC0
+    RCALL lcd_cmd
+    LDI   ZL, lo8(str_press)
+    LDI   ZH, hi8(str_press)
+    RCALL lcd_print_pgm
+    LDI   ZL, lo8(str_ser_go)
+    LDI   ZH, hi8(str_ser_go)
+    RCALL uart_print_pgm
+    RET
+
 false_start_detected:
     LDI   R16, 0
     STS   TCCR1B, R16
     RCALL leds_off
-    RCALL beep_long
+    RCALL delay_1s  
 
-    IN    R16, PIND
-    SBIS  PIND, PD2
-    RJMP  false_p1
+    CPI   R22, 1
+    BREQ  jump_false_p1
     RJMP  false_p2
+
+jump_false_p1:
+    RJMP  false_p1
 
 false_p1:
     INC   R25
@@ -332,7 +332,7 @@ game_over_p1:
     LDI   ZL, lo8(str_ser_p1wins)
     LDI   ZH, hi8(str_ser_p1wins)
     RCALL uart_print_pgm
-    RCALL beep_victory
+    RCALL delay_1s
     RJMP  restart_game
 
 game_over_p2:
@@ -349,7 +349,7 @@ game_over_p2:
     LDI   ZL, lo8(str_ser_p2wins)
     LDI   ZH, hi8(str_ser_p2wins)
     RCALL uart_print_pgm
-    RCALL beep_victory
+    RCALL delay_1s
 
 restart_game:
     RCALL delay_3s
@@ -365,7 +365,7 @@ process_win_p1:
     PUSH  R18
     MOV   R16, R28
     MOV   R17, R29
-    LDI   R18, 125
+    LDI   R18, 16
     RCALL div16_by8
     LDI   R20, 0x80
     PUSH  R16
@@ -390,7 +390,6 @@ process_win_p1:
     RCALL uart_print_pgm
     RCALL uart_print_u16
     RCALL check_highscore_p1
-    RCALL beep_double
     RCALL delay_2s
     POP   R18
     POP   R17
@@ -403,7 +402,7 @@ process_win_p2:
     PUSH  R18
     MOV   R16, R28
     MOV   R17, R29
-    LDI   R18, 125
+    LDI   R18, 16
     RCALL div16_by8
     LDI   R20, 0x80
     PUSH  R16
@@ -428,7 +427,6 @@ process_win_p2:
     RCALL uart_print_pgm
     RCALL uart_print_u16
     RCALL check_highscore_p2
-    RCALL beep_double
     RCALL delay_2s
     POP   R18
     POP   R17
@@ -671,65 +669,6 @@ wait_release_all:
     RCALL delay_50ms
     RET
 
-buzzer_on:
-    LDI   R16, (1<<COM2A0)|(1<<WGM21)
-    STS   TCCR2A, R16
-    LDI   R16, (1<<CS22)
-    STS   TCCR2B, R16
-    RET
-
-buzzer_off:
-    LDI   R16, (1<<WGM21)
-    STS   TCCR2A, R16
-    LDI   R16, 0
-    STS   TCCR2B, R16
-    CBI   PORTB, PB1
-    RET
-
-beep_short:
-    RCALL buzzer_on
-    RCALL delay_100ms
-    RCALL buzzer_off
-    RET
-
-beep_double:
-    RCALL buzzer_on
-    RCALL delay_100ms
-    RCALL buzzer_off
-    RCALL delay_100ms
-    RCALL buzzer_on
-    RCALL delay_100ms
-    RCALL buzzer_off
-    RET
-
-beep_long:
-    RCALL buzzer_on
-    LDI   R20, 100
-beep_long_loop:
-    RCALL delay_5ms
-    DEC   R20
-    BRNE  beep_long_loop
-    RCALL buzzer_off
-    RET
-
-beep_victory:
-    RCALL buzzer_on
-    RCALL delay_100ms
-    RCALL buzzer_off
-    RCALL delay_50ms
-    RCALL buzzer_on
-    RCALL delay_150ms
-    RCALL buzzer_off
-    RCALL delay_50ms
-    RCALL buzzer_on
-    LDI   R20, 60
-bv_loop:
-    RCALL delay_5ms
-    DEC   R20
-    BRNE  bv_loop
-    RCALL buzzer_off
-    RET
-
 div16_by8:
     PUSH  R18
     PUSH  R19
@@ -771,6 +710,7 @@ lcd_100sub:
     RJMP  lcd_100
 lcd_done100:
     SUBI  R20, -'0'
+    MOV   R16, R20
     RCALL lcd_write_char
     LDI   R20, 0
 lcd_10:
@@ -781,9 +721,11 @@ lcd_10:
     RJMP  lcd_10
 lcd_done10:
     SUBI  R20, -'0'
+    MOV   R16, R20
     RCALL lcd_write_char
     MOV   R20, R18
     SUBI  R20, -'0'
+    MOV   R16, R20
     RCALL lcd_write_char
     LDI   R16, 'm'
     RCALL lcd_write_char
@@ -821,6 +763,7 @@ up_100s:
     RJMP  up_100
 up_done100:
     SUBI  R20, -'0'
+    MOV   R16, R20
     RCALL uart_write_char
     LDI   R20, 0
 up_10:
@@ -831,9 +774,11 @@ up_10:
     RJMP  up_10
 up_done10:
     SUBI  R20, -'0'
+    MOV   R16, R20
     RCALL uart_write_char
     MOV   R20, R18
     SUBI  R20, -'0'
+    MOV   R16, R20
     RCALL uart_write_char
     LDI   R16, 'm'
     RCALL uart_write_char
@@ -1008,6 +953,72 @@ lcd_init:
     RCALL delay_1ms
     RET
 
+check_btn_poll:
+    SBIS  PIND, PD2
+    RJMP  cbp_p1
+    SBIS  PIND, PD3
+    RJMP  cbp_p2
+    LDI   R22, 0
+    RET
+cbp_p1:
+    LDI   R22, 1
+    RET
+cbp_p2:
+    LDI   R22, 2
+    RET
+
+delay_1s_poll:
+    PUSH  R20
+    PUSH  R21
+    LDI   R22, 0
+    LDI   R21, 200
+d1sp_lp:
+    RCALL check_btn_poll
+    CPI   R22, 0
+    BRNE  d1sp_end
+    RCALL delay_5ms
+    DEC   R21
+    BRNE  d1sp_lp
+d1sp_end:
+    POP   R21
+    POP   R20
+    RET
+
+random_delay_poll:
+    PUSH  R20
+    PUSH  R21
+    LDI   R22, 0
+    RCALL lfsr_next
+    MOV   R20, R16
+    ANDI  R20, 0x7F
+    LDI   R21, 200
+rdp_base:
+    RCALL check_btn_poll
+    CPI   R22, 0
+    BRNE  rdp_end
+    RCALL delay_5ms
+    DEC   R21
+    BRNE  rdp_base
+rdp_rand:
+    RCALL check_btn_poll
+    CPI   R22, 0
+    BRNE  rdp_end
+    RCALL delay_5ms
+    RCALL check_btn_poll
+    CPI   R22, 0
+    BRNE  rdp_end
+    RCALL delay_5ms
+    RCALL check_btn_poll
+    CPI   R22, 0
+    BRNE  rdp_end
+    RCALL delay_5ms
+    DEC   R20
+    BRNE  rdp_rand
+rdp_end:
+    POP   R21
+    POP   R20
+    RET
+
 delay_1ms:
     PUSH  R20
     PUSH  R21
@@ -1136,7 +1147,7 @@ str_best_of5:
     .ascii "  BEST OF FIVE  "
     .byte  0
 str_new_hs:
-    .ascii "** NEW RECORD! **"
+    .ascii "** NEW RECORD **"
     .byte  0
 str_serial_init:
     .ascii "F1 Race Game Init OK\r\n"
@@ -1169,5 +1180,5 @@ str_ser_round:
     .ascii "[ROUND] Starting round "
     .byte  0
 str_ser_newhs:
-    .ascii "[EEPROM] New high score saved!\r\n"
+    .ascii "== New high score saved! ==\r\n"
     .byte  0
