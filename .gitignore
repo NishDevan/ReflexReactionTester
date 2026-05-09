@@ -1,0 +1,14 @@
+# Arduino Build Artifacts
+*.o
+*.d
+*.elf
+*.hex
+*.bin
+
+# Proteus Workspace & Backups
+*.workspace
+*.pdsbak
+*.cdb
+*.dat
+Backup Of *.pdsbak
+Last Loaded *.pdsbak
