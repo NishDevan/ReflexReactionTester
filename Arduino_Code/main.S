@@ -11,8 +11,8 @@
 .equ EE_HS2_L,    0x02
 .equ EE_HS2_H,    0x03
 
-.equ I2C_FREQ_DIV, 32
-.equ LCD_ADDR,    0x20 
+.equ I2C_FREQ_DIV, 72
+.equ LCD_ADDR,    0x27 
 .equ LCD_BL,      0x08
 .equ LCD_EN,      0x04
 .equ LCD_RW,      0x02
@@ -333,7 +333,7 @@ game_over_p1:
     LDI   ZH, hi8(str_ser_p1wins)
     RCALL uart_print_pgm
     RCALL delay_1s
-    RJMP  restart_game
+    RJMP  end_game_halt     
 
 game_over_p2:
     LDI   R16, 0x80
@@ -350,14 +350,33 @@ game_over_p2:
     LDI   ZH, hi8(str_ser_p2wins)
     RCALL uart_print_pgm
     RCALL delay_1s
+    RJMP  end_game_halt     
 
-restart_game:
+restart_game:               
     RCALL delay_3s
     CLR   R23
     CLR   R24
     CLR   R25
     CLR   R19
     RJMP  game_loop
+
+end_game_halt:              
+    RCALL delay_3s
+    LDI   R16, 0x80
+    RCALL lcd_cmd
+    LDI   ZL, lo8(str_press_rst)
+    LDI   ZH, hi8(str_press_rst)
+    RCALL lcd_print_pgm
+    LDI   R16, 0xC0
+    RCALL lcd_cmd
+    LDI   ZL, lo8(str_to_play)
+    LDI   ZH, hi8(str_to_play)
+    RCALL lcd_print_pgm
+    LDI   ZL, lo8(str_ser_rst)
+    LDI   ZH, hi8(str_ser_rst)
+    RCALL uart_print_pgm
+halt_loop:
+    RJMP  halt_loop         
 
 process_win_p1:
     PUSH  R16
@@ -1022,7 +1041,7 @@ rdp_end:
 delay_1ms:
     PUSH  R20
     PUSH  R21
-    LDI   R20, 8
+    LDI   R20, 16
     LDI   R21, 250
 d1ms_l1:
     NOP
@@ -1181,4 +1200,14 @@ str_ser_round:
     .byte  0
 str_ser_newhs:
     .ascii "== New high score saved! ==\r\n"
+    .byte  0
+
+str_press_rst:
+    .ascii "Press RESET Btn "
+    .byte  0
+str_to_play:
+    .ascii "to play again.. "
+    .byte  0
+str_ser_rst:
+    .ascii "\r\n[INFO] Game Over. Press physical Arduino RESET button to restart.\r\n"
     .byte  0
