@@ -1,1 +1,18 @@
-# ReflexReactionTester
+# F1 Race Game (Reaction Time & Reflex Tester)
+
+## Introduction to the problem and the solution
+Tingkat kewaspadaan dan waktu reaksi (*reaction time*) merupakan metrik krusial dalam mengukur tingkat fokus dan kelelahan (*fatigue*) manusia. Sistem operasi tingkat tinggi modern sering kali memiliki latensi yang membuat pengukuran waktu dalam orde milidetik menjadi kurang akurat. Proyek ini menyelesaikan masalah tersebut dengan menciptakan instrumen pengukur waktu reaksi presisi tinggi berbasis mikrokontroler ATmega328P (Arduino UNO). Dengan menggunakan bahasa Assembly tingkat rendah, sistem meminimalkan *overhead* instruksi dan mengontrol register perangkat keras secara absolut untuk menjamin akurasi perhitungan waktu.
+
+## Hardware design and implementation details
+Sistem ditenagai menggunakan *standalone power supply* untuk mobilitas. Antarmuka input menggunakan dua buah *Push Button* (diperuntukkan bagi Player 1 dan Player 2) yang dihubungkan dengan resistor *pull-up* internal ke pin PD2 dan PD3. Antarmuka aktuator visual dan audio terdiri dari 4 LED Merah, 1 LED Hijau, dan 1 *Active Buzzer* yang dihubungkan ke port D (PD4-PD7) dan port B (PB0). Data pengukuran divisualisasikan melalui LCD 16x2 yang dikendalikan dengan protokol komunikasi serial via modul I2C Expander (PCF8574) pada pin SDA/SCL. Sebuah potensiometer dihubungkan secara parsial ke pin analog (A0) yang dibiarkan *floating* untuk menghasilkan pembacaan derau (*noise*) analog.
+
+## Software implementation details
+Arsitektur perangkat lunak ditulis seluruhnya dalam bahasa AVR Assembly murni (`.S`). Sistem menggunakan modul ADC untuk membaca derau analog sebagai *seed* bagi algoritma *Linear-Feedback Shift Register* (LFSR), yang menghasilkan durasi *delay* acak. Alih-alih menggunakan *External Interrupts*, sistem secara sengaja menggunakan logika *Polling* berkecepatan tinggi (`SBIS`) dalam sebuah *tight loop* untuk mendeteksi penekanan tombol, yang terbukti lebih stabil dalam menangani logika pelanggaran *False Start*.
+
+Untuk pengukuran waktu, Timer 1 beroperasi pada *Normal Mode*. *Tick* perangkat keras dari Timer 1 tidak dikonversi melalui fitur perangkat keras mikrokontroler, melainkan dieksekusi menggunakan modul Aritmatika (*Arithmetic*) berupa sub-rutin perangkat lunak pembagian 16-bit khusus (`div16_by8`) untuk menghasilkan satuan milidetik yang riil. Rekor waktu tercepat pemain disimpan dan dibandingkan menggunakan memori non-volatile (EEPROM).
+
+## Test results and performance evaluation
+Verifikasi logika program diuji melalui metode *Software-in-the-Loop* menggunakan perangkat lunak Proteus 8 Professional untuk memastikan alamat I2C (0x27) dan pengiriman data *logging* melalui protokol USART (pada *baud rate* 115200 bps) berjalan tanpa kolisi data. Pada tahap *Hardware-in-the-Loop*, pengujian pada papan *breadboard* membuktikan bahwa sistem pengkondisian sinyal (*debouncing*) tombol melalui metode *polling* berhasil mencegah input ganda, dan sub-rutin pembagian aritmatika mampu menampilkan data ms (milidetik) secara presisi dan konsisten ke layar LCD maupun Serial Monitor.
+
+## Conclusion and future work
+Proyek ini sukses mendemonstrasikan integrasi 7 modul utama mikrokontroler: Timer/Counter, Arithmetic (16-bit Register Manipulation), Konversi ADC, Komunikasi I2C *bit-banging*, Komunikasi USART Serial, EEPROM, dan aktuasi IO dasar. Instrumen ini memiliki nilai utilitas yang tinggi sebagai perangkat pengukur kelelahan yang portabel. Untuk pengembangan di masa mendatang (*future work*), efisiensi siklus CPU dapat ditingkatkan dengan memigrasikan metode deteksi input dari *Polling* ke *External Interrupts* (INT0/INT1), serta menggunakan fitur *Clear Timer on Compare Match* (CTC) perangkat keras untuk mereduksi beban komputasi aritmatika pada perangkat lunak.
